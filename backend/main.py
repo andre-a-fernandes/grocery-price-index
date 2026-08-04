@@ -49,7 +49,7 @@ load_dotenv()
 # --------------------------------------------------------------------------
 # google-genai automatically reads GEMINI_API_KEY or the Vertex AI env vars.
 client = genai.Client()
-MODEL_NAME = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+MODEL_NAME = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
 
 
 # --------------------------------------------------------------------------
