@@ -1,0 +1,12 @@
+[project]
+name = "grocery-price-index"
+version = "0.1.0"
+description = "Photograph grocery receipts → structured, comparable price data via Gemini"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = []
+
+[tool.uv.workspace]
+members = [
+    "backend",
+]
