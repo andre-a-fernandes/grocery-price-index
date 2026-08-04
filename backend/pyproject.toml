@@ -9,4 +9,5 @@ dependencies = [
     "google-genai>=2.16.0",
     "pydantic>=2.13.4",
     "uvicorn[standard]>=0.52.1",
+    "python-dotenv>=1.2.2",
 ]

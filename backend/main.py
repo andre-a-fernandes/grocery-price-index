@@ -33,12 +33,16 @@ import time
 from collections import defaultdict, deque
 from datetime import date
 from typing import Optional
+from dotenv import load_dotenv
 
 from fastapi import FastAPI, File, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
+
+# Load .env file before reading any environment variables
+load_dotenv()
 
 # --------------------------------------------------------------------------
 # Gemini client
@@ -104,7 +108,7 @@ class ParsedReceipt(BaseModel):
 # startup log warns loudly so this isn't accidental in production.
 APP_SECRET = os.environ.get("APP_SECRET", "")
 if not APP_SECRET:
-    print("[receipt-ledger] WARNING: APP_SECRET is not set — /api/parse-receipt is UNAUTHENTICATED.")
+    print("[receipt-ledger] WARNING: APP_SECRET is not set — /ocr/parse-receipt is UNAUTHENTICATED.")
 
 MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_MB", "8")) * 1024 * 1024
 
@@ -150,7 +154,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-PROMPT = f"""You are given a photo of a shopping receipt. Extract every purchased
+PROMPT = """You are given a photo of a shopping receipt. Extract every purchased
 line item and return it according to the provided schema.
 
 Rules:
@@ -163,7 +167,7 @@ Rules:
   gives you both a weight and a total, in which case compute it.
 - generalized_name should be short (1-4 words) and store-agnostic so the same
   product bought at two different stores gets the same generalized_name.
-- If the date is missing or unreadable, use {date.today().isoformat()}.
+- If the date is missing or unreadable, use {today}.
 """
 
 
@@ -200,11 +204,12 @@ async def parse_receipt(
         raise HTTPException(413, f"Image exceeds {MAX_UPLOAD_BYTES // (1024*1024)}MB limit")
 
     try:
+        prompt = PROMPT.format(today=date.today().isoformat())
         response = client.models.generate_content(
             model=MODEL_NAME,
             contents=[
                 types.Part.from_bytes(data=image_bytes, mime_type=file.content_type),
-                PROMPT,
+                prompt,
             ],
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
@@ -220,7 +225,10 @@ async def parse_receipt(
         raise HTTPException(502, f"Gemini request failed: {exc}") from exc
 
     try:
-        data = json.loads(response.text)
+        text = response.text
+        if not text:
+            raise HTTPException(502, "Model returned an empty response.")
+        data = json.loads(text)
     except (json.JSONDecodeError, TypeError) as exc:
         raise HTTPException(502, f"Model returned unparseable output: {exc}") from exc
 

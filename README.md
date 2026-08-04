@@ -74,13 +74,20 @@ Visit `http://localhost:8000` — you should see `{"status": "ok", ...}`.
 
 #### Hugging Face Spaces — recommended, genuinely free, no card
 
+The Dockerfile lives at `.docker/backend.Dockerfile` and expects the
+**repository root** as its build context (it copies from `backend/`).
+HF Spaces looks for a `Dockerfile` at the Space repo root, so:
+
 1. Create a new Space at <https://huggingface.co/new-space>, SDK = **Docker**,
    hardware = free **CPU basic**.
-2. Push the contents of `backend/` to the Space's git repo (it already has a
-   `Dockerfile`).
-3. In the Space's **Settings → Variables and secrets**, add a secret:
+2. Clone your Space's git repo. From the project root:
+   ```bash
+   cp .docker/backend.Dockerfile Dockerfile
+   ```
+3. Push `backend/`, `uv.lock`, and the `Dockerfile` to the Space.
+4. In the Space's **Settings → Variables and secrets**, add a secret:
    `GEMINI_API_KEY = your-key-here`.
-4. Wait for the build to finish. Your API is now at
+5. Wait for the build to finish. Your API is now at
    `https://<your-username>-<space-name>.hf.space`.
 
 Free CPU Spaces go to sleep after a period of inactivity and take ~30-60s to
@@ -90,10 +97,12 @@ day.
 
 #### Alternative — Google Cloud Run (one-command deploy, but requires a card on file)
 
+Run from the **repository root** (not `backend/`):
+
 ```bash
-cd backend
 gcloud run deploy receipt-ledger \
   --source . \
+  --dockerfile .docker/backend.Dockerfile \
   --region=us-central1 \
   --allow-unauthenticated \
   --set-env-vars="GEMINI_API_KEY=your-key-here"
@@ -177,10 +186,11 @@ options:
 
 ```
 grocery-price-index/
+├── .docker/
+│   └── backend.Dockerfile # works for both HF Spaces and Cloud Run (build from repo root)
 ├── backend/
-│   ├── main.py            # FastAPI app: POST /api/parse-receipt
+│   ├── main.py            # FastAPI app: POST /ocr/parse-receipt
 │   ├── pyproject.toml     # Python project config & dependencies
-│   ├── Dockerfile         # works for both HF Spaces and Cloud Run
 │   └── .env.example       # environment variable template
 ├── frontend/
 │   ├── index.html         # entire UI + logic, no build step
@@ -188,6 +198,8 @@ grocery-price-index/
 │   ├── sw.js              # offline app-shell cache
 │   └── icon.png
 ├── pyproject.toml         # workspace root (uv)
+├── uv.lock                # workspace lock file
+├── .dockerignore          # exclude useless files from context
 ├── README.md
 └── LICENSE
 ```

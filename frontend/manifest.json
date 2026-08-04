@@ -1,0 +1,13 @@
+{
+  "name": "Receipt Ledger",
+  "short_name": "Receipts",
+  "description": "Scan grocery receipts and compare prices across stores.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F7F3E8",
+  "theme_color": "#F7F3E8",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

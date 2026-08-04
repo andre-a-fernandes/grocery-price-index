@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#F7F3E8" />
+<title>Receipt Ledger</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F7F3E8;
+    --paper-dark: #ECE6D6;
+    --ink: #241F19;
+    --ink-soft: #6B6255;
+    --green: #4B6E4E;
+    --green-soft: #E3EBE0;
+    --stamp: #B23A2E;
+    --line: #D9D0BC;
+    --radius: 3px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'IBM Plex Mono', monospace;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 84px;
+  }
+  h1, h2, .display {
+    font-family: 'Space Grotesk', sans-serif;
+    letter-spacing: -0.01em;
+  }
+  header.top {
+    padding: 20px 18px 14px;
+    border-bottom: 1.5px dashed var(--line);
+    background: var(--paper);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+  header.top h1 {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  header.top h1 .tick { color: var(--stamp); }
+  header.top p {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+  main { padding: 16px; max-width: 640px; margin: 0 auto; }
+  .view { display: none; animation: fade .15s ease; }
+  .view.active { display: block; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 14px;
+    position: relative;
+  }
+  .card::before {
+    content: "";
+    position: absolute;
+    top: -1px; left: 0; right: 0;
+    height: 6px;
+    background: repeating-linear-gradient(
+      -45deg, var(--paper) 0 5px, transparent 5px 10px
+    );
+    background-color: var(--line);
+  }
+
+  button {
+    font-family: inherit;
+    font-size: 14px;
+    border: none;
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .btn-primary { background: var(--green); color: #fff; width: 100%; }
+  .btn-primary:disabled { opacity: 0.5; }
+  .btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  .btn-danger { background: transparent; color: var(--stamp); border: 1px solid var(--stamp); }
+  .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+  .btn-row button { flex: 1; }
+
+  input[type=text], input[type=number], select {
+    font-family: inherit;
+    background: var(--paper-dark);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 8px 10px;
+    font-size: 13px;
+    width: 100%;
+    color: var(--ink);
+  }
+  label.field { display: block; font-size: 11px; color: var(--ink-soft); margin: 8px 0 3px; text-transform: uppercase; letter-spacing: .04em; }
+
+  #camera-input { display: none; }
+  .capture-zone {
+    border: 1.5px dashed var(--line);
+    border-radius: var(--radius);
+    text-align: center;
+    padding: 40px 16px;
+    cursor: pointer;
+    color: var(--ink-soft);
+  }
+  .capture-zone strong { display: block; color: var(--ink); font-size: 15px; margin-bottom: 4px; }
+  #preview-img { width: 100%; border-radius: var(--radius); margin-bottom: 10px; display: none; max-height: 280px; object-fit: cover; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; color: var(--ink-soft); font-weight: 600; font-size: 10px; text-transform: uppercase; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+  td { padding: 6px 4px; border-bottom: 1px dashed var(--line); vertical-align: top; }
+  td input { padding: 4px 6px; font-size: 12px; }
+  .price-cell { color: var(--stamp); font-weight: 600; white-space: nowrap; }
+  .muted { color: var(--ink-soft); font-size: 11px; }
+
+  .receipt-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0; border-bottom: 1px dashed var(--line);
+  }
+  .receipt-item:last-child { border-bottom: none; }
+  .receipt-item .name { font-weight: 600; font-size: 13px; }
+  .receipt-item .sub { color: var(--ink-soft); font-size: 11px; }
+
+  nav.tabs {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    display: flex;
+    background: var(--paper);
+    border-top: 1.5px dashed var(--line);
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+    z-index: 5;
+  }
+  nav.tabs button {
+    flex: 1; background: none; color: var(--ink-soft);
+    font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+    padding: 8px 4px;
+  }
+  nav.tabs button.active { color: var(--green); }
+
+  .empty { text-align: center; color: var(--ink-soft); padding: 40px 20px; font-size: 13px; }
+  .toast {
+    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+    background: var(--ink); color: var(--paper); padding: 10px 16px;
+    border-radius: var(--radius); font-size: 12px; opacity: 0; transition: opacity .2s;
+    pointer-events: none; z-index: 20; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+
+  #settings-toggle { background: none; border: none; color: var(--ink-soft); font-size: 11px; text-decoration: underline; padding: 0; margin-top: 6px; }
+  #settings-panel { display: none; margin-top: 10px; }
+  #settings-panel.show { display: block; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>Receipt Ledger <span class="tick">·</span></h1>
+  <p>scan &rarr; structure &rarr; compare prices across stores</p>
+</header>
+
+<main>
+
+  <!-- SCAN VIEW -->
+  <section class="view active" id="view-scan">
+    <div class="card">
+      <div id="capture-zone" class="capture-zone">
+        <strong>Tap to photograph a receipt</strong>
+        opens your camera directly
+      </div>
+      <!-- Transparent 1x1 px fallback src --> 
+      <img id="preview-img" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="receipt preview" />
+      <input id="camera-input" type="file" accept="image/*" capture="environment" />
+      <button id="parse-btn" class="btn-primary" style="margin-top:10px; display:none;">Parse receipt</button>
+      <button id="settings-toggle" type="button">backend settings</button>
+      <div id="settings-panel">
+        <label class="field">Backend URL</label>
+        <input id="backend-url" type="text" placeholder="https://your-space.hf.space" />
+        <label class="field">App secret (matches APP_SECRET on the backend)</label>
+        <input id="app-secret" type="text" placeholder="only needed if you set APP_SECRET" autocomplete="off" />
+      </div>
+    </div>
+
+    <div class="card" id="result-card" style="display:none;">
+      <label class="field">Store</label>
+      <input id="edit-store" type="text" />
+      <label class="field">Date</label>
+      <input id="edit-date" type="text" />
+      <table id="items-table">
+        <thead>
+          <tr><th>Item</th><th>Qty</th><th>Price</th><th></th></tr>
+        </thead>
+        <tbody id="items-tbody"></tbody>
+      </table>
+      <div class="btn-row">
+        <button class="btn-ghost" id="add-row-btn">+ row</button>
+        <button class="btn-primary" id="save-btn">Save to ledger</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- HISTORY VIEW -->
+  <section class="view" id="view-history">
+    <div id="history-list"></div>
+  </section>
+
+  <!-- COMPARE VIEW -->
+  <section class="view" id="view-compare">
+    <div class="card">
+      <label class="field">Item</label>
+      <select id="compare-select"></select>
+      <div id="compare-results" style="margin-top:12px;"></div>
+    </div>
+    <button class="btn-ghost" id="export-md-btn" style="width:100%;">Export full ledger as Markdown</button>
+  </section>
+
+</main>
+
+<nav class="tabs">
+  <button data-view="scan" class="active">Scan</button>
+  <button data-view="history">History</button>
+  <button data-view="compare">Compare</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------------------------------------------------------------------
+ * Receipt Ledger — local-first PWA
+ * All parsed receipts live in localStorage under "receipts". The
+ * FastAPI backend is stateless: it only ever does image -> structured
+ * JSON, so this file is the entire "database" and UI.
+ * ------------------------------------------------------------------ */
+
+const STORAGE_KEY = "receipts_v1";
+const BACKEND_KEY = "backend_url_v1";
+const SECRET_KEY = "app_secret_v1";
+// This secret is stored only in this browser's localStorage — it is never
+// present in the source file itself, so it isn't in the git repo/deploy
+// bundle. Anyone who deploys their own copy of this frontend still has to
+// be told the secret out-of-band (by you) before their copy can call your
+// backend successfully.
+
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+// ---- storage helpers ---------------------------------------------------
+function loadReceipts() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+  catch { return []; }
+}
+function saveReceipts(list) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+}
+function getBackendUrl() {
+  return localStorage.getItem(BACKEND_KEY) || "";
+}
+function setBackendUrl(url) {
+  localStorage.setItem(BACKEND_KEY, url.trim().replace(/\/$/, ""));
+}
+function getAppSecret() {
+  return localStorage.getItem(SECRET_KEY) || "";
+}
+function setAppSecret(secret) {
+  localStorage.setItem(SECRET_KEY, secret.trim());
+}
+
+// ---- toast --------------------------------------------------------------
+let toastTimer;
+function toast(msg) {
+  const el = $("#toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 2200);
+}
+
+// ---- tab navigation -------------------------------------------------
+$$("nav.tabs button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    $$("nav.tabs button").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    $$(".view").forEach((v) => v.classList.remove("active"));
+    $(`#view-${btn.dataset.view}`).classList.add("active");
+    if (btn.dataset.view === "history") renderHistory();
+    if (btn.dataset.view === "compare") renderCompare();
+  });
+});
+
+// ---- settings panel ---------------------------------------------------
+$("#backend-url").value = getBackendUrl();
+$("#backend-url").addEventListener("change", (e) => setBackendUrl(e.target.value));
+$("#app-secret").value = getAppSecret();
+$("#app-secret").addEventListener("change", (e) => setAppSecret(e.target.value));
+$("#settings-toggle").addEventListener("click", () => {
+  $("#settings-panel").classList.toggle("show");
+});
+
+// ---- scan flow ----------------------------------------------------------
+let currentFile = null;
+let currentParsed = null;
+let currentObjectUrl = null;
+
+$("#capture-zone").addEventListener("click", () => $("#camera-input").click());
+
+$("#camera-input").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  currentFile = file;
+  // Revoke any previous object URL to avoid memory leaks
+  if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+  currentObjectUrl = URL.createObjectURL(file);
+  const img = $("#preview-img");
+  img.src = currentObjectUrl;
+  img.style.display = "block";
+  $("#parse-btn").style.display = "block";
+  $("#result-card").style.display = "none";
+});
+
+$("#parse-btn").addEventListener("click", async () => {
+  const backend = getBackendUrl();
+  if (!backend) {
+    toast("Set your backend URL first (tap 'backend settings')");
+    $("#settings-panel").classList.add("show");
+    return;
+  }
+  if (!currentFile) return;
+
+  $("#parse-btn").disabled = true;
+  $("#parse-btn").textContent = "Reading receipt…";
+
+  try {
+    const form = new FormData();
+    form.append("file", currentFile);
+    const headers = {};
+    const secret = getAppSecret();
+    if (secret) headers["X-App-Secret"] = secret;
+    const res = await fetch(`${backend}/ocr/parse-receipt`, { method: "POST", body: form, headers });
+    if (res.status === 401) { toast("Wrong app secret — check settings"); return; }
+    if (res.status === 429) { toast("Rate limit hit — wait a bit and retry"); return; }
+    if (!res.ok) throw new Error(await res.text());
+    currentParsed = await res.json();
+    renderEditableResult(currentParsed);
+  } catch (err) {
+    console.error(err);
+    toast("Parse failed — check backend URL / logs");
+  } finally {
+    $("#parse-btn").disabled = false;
+    $("#parse-btn").textContent = "Parse receipt";
+  }
+});
+
+function renderEditableResult(parsed) {
+  $("#result-card").style.display = "block";
+  $("#edit-store").value = parsed.store_name || "";
+  $("#edit-date").value = parsed.receipt_date || "";
+  const tbody = $("#items-tbody");
+  tbody.innerHTML = "";
+  (parsed.items || []).forEach((item) => addItemRow(item));
+}
+
+function addItemRow(item = {}) {
+  const tbody = $("#items-tbody");
+  const tr = document.createElement("tr");
+
+  // Build the row using DOM methods instead of innerHTML to avoid XSS.
+  // Values from the LLM (raw_name, generalized_name) could contain
+  // quotes or HTML that would break out of innerHTML template literals.
+  const tdName = document.createElement("td");
+  const inputName = document.createElement("input");
+  inputName.type = "text";
+  inputName.className = "f-name";
+  inputName.value = item.generalized_name ?? "";
+  inputName.placeholder = "generalized name";
+  const divRaw = document.createElement("div");
+  divRaw.className = "muted";
+  divRaw.textContent = item.raw_name ?? "";
+  tdName.appendChild(inputName);
+  tdName.appendChild(divRaw);
+
+  const tdQty = document.createElement("td");
+  const inputQty = document.createElement("input");
+  inputQty.type = "text";
+  inputQty.className = "f-qty";
+  inputQty.style.width = "52px";
+  inputQty.value = `${item.quantity ?? 1}${item.unit ? " " + item.unit : ""}`;
+  tdQty.appendChild(inputQty);
+
+  const tdPrice = document.createElement("td");
+  const inputPrice = document.createElement("input");
+  inputPrice.type = "number";
+  inputPrice.step = "0.01";
+  inputPrice.className = "f-price";
+  inputPrice.style.width = "64px";
+  inputPrice.value = item.total_price ?? 0;
+  tdPrice.appendChild(inputPrice);
+
+  const tdAction = document.createElement("td");
+  const btnDel = document.createElement("button");
+  btnDel.className = "btn-danger del-row";
+  btnDel.style.padding = "6px 8px";
+  btnDel.textContent = "×";
+  btnDel.addEventListener("click", () => tr.remove());
+  tdAction.appendChild(btnDel);
+
+  tr.appendChild(tdName);
+  tr.appendChild(tdQty);
+  tr.appendChild(tdPrice);
+  tr.appendChild(tdAction);
+
+  tr.dataset.category = item.category || "";
+  tr.dataset.unitPrice = item.unit_price ?? "";
+  tr.dataset.unitPriceUom = item.unit_price_uom ?? "";
+  $("#items-tbody").appendChild(tr);
+}
+
+$("#add-row-btn").addEventListener("click", () => addItemRow({ quantity: 1 }));
+
+$("#save-btn").addEventListener("click", () => {
+  const rows = [...$("#items-tbody").querySelectorAll("tr")];
+  if (rows.length === 0) { toast("No items to save"); return; }
+
+  const items = rows.map((tr) => ({
+    generalized_name: tr.querySelector(".f-name").value.trim(),
+    quantity_label: tr.querySelector(".f-qty").value.trim(),
+    total_price: parseFloat(tr.querySelector(".f-price").value) || 0,
+    category: tr.dataset.category,
+    unit_price: tr.dataset.unitPrice ? parseFloat(tr.dataset.unitPrice) : null,
+    unit_price_uom: tr.dataset.unitPriceUom || null,
+  }));
+
+  const receipt = {
+    id: crypto.randomUUID(),
+    store_name: $("#edit-store").value.trim() || "Unknown store",
+    receipt_date: $("#edit-date").value.trim() || new Date().toISOString().slice(0, 10),
+    saved_at: new Date().toISOString(),
+    currency: currentParsed?.currency || "EUR",
+    items,
+  };
+
+  const all = loadReceipts();
+  all.unshift(receipt);
+  saveReceipts(all);
+  toast("Saved to ledger");
+
+  // reset scan view
+  currentFile = null; currentParsed = null;
+  if (currentObjectUrl) { URL.revokeObjectURL(currentObjectUrl); currentObjectUrl = null; }
+  $("#preview-img").style.display = "none";
+  $("#parse-btn").style.display = "none";
+  $("#result-card").style.display = "none";
+  $("#camera-input").value = "";
+});
+
+// ---- history view ---------------------------------------------------
+function renderHistory() {
+  const all = loadReceipts();
+  const list = $("#history-list");
+  if (all.length === 0) {
+    list.innerHTML = `<div class="empty">No receipts saved yet.<br/>Scan one from the Scan tab.</div>`;
+    return;
+  }
+  list.innerHTML = "";
+  all.forEach((r) => {
+    const currency = r.currency || "EUR";
+    const total = r.items.reduce((s, i) => s + (i.total_price || 0), 0);
+    const card = document.createElement("div");
+    card.className = "card";
+
+    const header = document.createElement("div");
+    header.style.cssText = "display:flex; justify-content:space-between; align-items:baseline;";
+    const store = document.createElement("strong");
+    store.className = "display";
+    store.textContent = r.store_name;
+    const dateSpan = document.createElement("span");
+    dateSpan.className = "muted";
+    dateSpan.textContent = r.receipt_date;
+    header.appendChild(store);
+    header.appendChild(dateSpan);
+
+    const summary = document.createElement("div");
+    summary.className = "muted";
+    summary.style.marginBottom = "8px";
+    summary.textContent = `${r.items.length} items \u00b7 ${currency}${total.toFixed(2)}`;
+
+    card.appendChild(header);
+    card.appendChild(summary);
+
+    r.items.forEach((i) => {
+      const row = document.createElement("div");
+      row.className = "receipt-item";
+      const left = document.createElement("div");
+      const name = document.createElement("div");
+      name.className = "name";
+      name.textContent = i.generalized_name;
+      const sub = document.createElement("div");
+      sub.className = "sub";
+      sub.textContent = i.quantity_label || "";
+      if (i.unit_price) sub.textContent += ` \u00b7 ${currency}${i.unit_price.toFixed(2)} ${i.unit_price_uom || ""}`;
+      left.appendChild(name);
+      left.appendChild(sub);
+      const price = document.createElement("div");
+      price.className = "price-cell";
+      price.textContent = `${currency}${(i.total_price || 0).toFixed(2)}`;
+      row.appendChild(left);
+      row.appendChild(price);
+      card.appendChild(row);
+    });
+
+    const delBtn = document.createElement("button");
+    delBtn.className = "btn-danger";
+    delBtn.style.cssText = "margin-top:10px; width:100%;";
+    delBtn.textContent = "Delete receipt";
+    delBtn.addEventListener("click", () => deleteReceipt(r.id));
+    card.appendChild(delBtn);
+
+    list.appendChild(card);
+  });
+}
+
+function deleteReceipt(id) {
+  const all = loadReceipts().filter((r) => r.id !== id);
+  saveReceipts(all);
+  renderHistory();
+  toast("Deleted");
+}
+
+// ---- compare view ---------------------------------------------------
+function renderCompare() {
+  const all = loadReceipts();
+  const names = new Set();
+  all.forEach((r) => r.items.forEach((i) => names.add(i.generalized_name)));
+
+  const select = $("#compare-select");
+  const prevValue = select.value;
+  select.innerHTML = [...names].sort().map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
+  if (names.has(prevValue)) select.value = prevValue;
+
+  select.onchange = () => renderCompareResults(select.value);
+  if (names.size > 0) renderCompareResults(select.value);
+  else $("#compare-results").innerHTML = `<div class="empty">Save a few receipts first.</div>`;
+}
+
+function renderCompareResults(name) {
+  const all = loadReceipts();
+  const rows = [];
+  all.forEach((r) => {
+    r.items.filter((i) => i.generalized_name === name).forEach((i) => {
+      rows.push({ store: r.store_name, date: r.receipt_date, currency: r.currency || "EUR", ...i });
+    });
+  });
+  // cheapest-by-unit-price first when available, else by total price
+  rows.sort((a, b) => (a.unit_price ?? a.total_price) - (b.unit_price ?? b.total_price));
+
+  const container = $("#compare-results");
+  container.innerHTML = "";
+  rows.forEach((r, idx) => {
+    const row = document.createElement("div");
+    row.className = "receipt-item";
+    const left = document.createElement("div");
+    const store = document.createElement("div");
+    store.className = "name";
+    store.textContent = (idx === 0 ? "\u{1F3C6} " : "") + r.store;
+    const sub = document.createElement("div");
+    sub.className = "sub";
+    sub.textContent = `${r.date} \u00b7 ${r.quantity_label || ""}`;
+    left.appendChild(store);
+    left.appendChild(sub);
+    const price = document.createElement("div");
+    price.className = "price-cell";
+    price.textContent = r.unit_price
+      ? `${r.currency}${r.unit_price.toFixed(2)} ${r.unit_price_uom || ""}`
+      : `${r.currency}${r.total_price.toFixed(2)}`;
+    row.appendChild(left);
+    row.appendChild(price);
+    container.appendChild(row);
+  });
+}
+
+// ---- markdown export --------------------------------------------------
+$("#export-md-btn").addEventListener("click", async () => {
+  const all = loadReceipts();
+  if (all.length === 0) { toast("Nothing to export yet"); return; }
+
+  // Escape pipe characters so they don't break the markdown table
+  const esc = (s) => String(s ?? "").replace(/\|/g, "\\|");
+
+  let md = "| Item | Store | Date | Qty | Price | Unit price |\n";
+  md += "|---|---|---|---|---|---|\n";
+  all.forEach((r) => {
+    const currency = r.currency || "EUR";
+    r.items.forEach((i) => {
+      md += `| ${esc(i.generalized_name)} | ${esc(r.store_name)} | ${esc(r.receipt_date)} | ${esc(i.quantity_label)} | ${currency}${(i.total_price || 0).toFixed(2)} | ${i.unit_price ? `${currency}${i.unit_price.toFixed(2)} ${esc(i.unit_price_uom)}` : "\u2013"} |\n`;
+    });
+  });
+
+  try {
+    await navigator.clipboard.writeText(md);
+    toast("Markdown copied \u2014 paste into Notion");
+  } catch {
+    // clipboard API can fail without a user gesture/https; fall back to a prompt
+    prompt("Copy this markdown:", md);
+  }
+});
+
+function escapeHtml(str) {
+  const map = {
+    "&": "\u0026amp;",
+    "<": "\u0026lt;",
+    ">": "\u0026gt;",
+    '"': "\u0026quot;",
+    "'": "\u0026#39;",
+  };
+  return String(str ?? "").replace(/[&<>"']/g, (c) => map[c]);
+}
+
+// ---- service worker (installable PWA) ----------------------------------
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+</script>
+</body>
+</html>

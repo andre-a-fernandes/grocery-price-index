@@ -1,0 +1,43 @@
+# Version control
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[codz]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# Environment files (secrets should be injected at runtime)
+.env
+.envrc
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Type checking / linting caches
+.mypy_cache/
+.ruff_cache/
+.pytype/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation (not needed in the container image)
+README.md
+*.md

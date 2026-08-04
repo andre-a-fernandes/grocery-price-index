@@ -113,11 +113,11 @@ If you prefer to test the API in a containerized environment (closer to how it
 runs in production), you can build and run the Docker image locally:
 
 ```bash
-# Build the image
-docker build -t receipt-tracker .
+# Build the image (run from the repository root)
+docker build -f .docker/backend.Dockerfile -t backend .
 
 # Run the container
-docker run --rm -p 8000:7860 -e GEMINI_API_KEY=your-key-here receipt-tracker
+docker run --rm -p 8000:7860 -e GEMINI_API_KEY=your-key-here backend
 ```
 
 Then test the endpoints:
@@ -140,20 +140,31 @@ curl -X POST http://localhost:8000/ocr/parse-receipt \
 
 ### Hugging Face Spaces (recommended — free, no card required)
 
+The Dockerfile is at `.docker/backend.Dockerfile` and expects the
+repository root as its build context (it copies from `backend/`).
+HF Spaces looks for a `Dockerfile` at the Space repo root, so:
+
 1. Create a new Space at <https://huggingface.co/new-space>, SDK = **Docker**,
    hardware = free **CPU basic**.
-2. Push the contents of `backend/` to the Space's git repo.
-3. In **Settings → Variables and secrets**, add `GEMINI_API_KEY` as a secret.
-4. Your API will be available at `https://<user>-<space>.hf.space`.
+2. Clone your Space's git repo. From the project root:
+   ```bash
+   cp .docker/backend.Dockerfile Dockerfile
+   ```
+3. Push `backend/`, `uv.lock`, and the `Dockerfile` to the Space.
+4. In **Settings → Variables and secrets**, add `GEMINI_API_KEY` as a secret.
+5. Your API will be available at `https://<user>-<space>.hf.space`.
 
 Free CPU Spaces sleep after inactivity and take ~30–60s to wake on the next
 request.
 
 ### Google Cloud Run
 
+Run from the **repository root** (not `backend/`):
+
 ```bash
 gcloud run deploy receipt-ledger \
   --source . \
+  --dockerfile .docker/backend.Dockerfile \
   --region=us-central1 \
   --allow-unauthenticated \
   --set-env-vars="GEMINI_API_KEY=your-key-here"
