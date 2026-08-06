@@ -16,8 +16,7 @@ COPY uv.lock ./
 RUN uv sync --frozen --no-install-project --no-progress
 
 # Copy the application code.
-COPY backend/main.py .
-COPY backend/healthcheck.py .
+COPY backend/ ./
 
 # Hugging Face Spaces sets $PORT at runtime and expects
 # the container to listen on it.

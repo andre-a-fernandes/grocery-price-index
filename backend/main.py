@@ -27,72 +27,20 @@ See README.md for setup instructions.
 """
 
 import hmac
-import json
 import os
 import time
 from collections import defaultdict, deque
-from datetime import date
 from typing import Optional
 from dotenv import load_dotenv
 
 from fastapi import FastAPI, File, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from google import genai
-from google.genai import types
-from pydantic import BaseModel, Field
+
+from core.parser import analyse_receipt, ParsedReceipt
+from config.settings import MODEL_NAME
 
 # Load .env file before reading any environment variables
 load_dotenv()
-
-# --------------------------------------------------------------------------
-# Gemini client
-# --------------------------------------------------------------------------
-# google-genai automatically reads GEMINI_API_KEY or the Vertex AI env vars.
-client = genai.Client()
-MODEL_NAME = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
-
-
-# --------------------------------------------------------------------------
-# Response schema
-# --------------------------------------------------------------------------
-# Passed to Gemini as a controlled-generation schema so the model returns
-# valid, predictable JSON instead of free text.
-class ReceiptItem(BaseModel):
-    raw_name: str = Field(description="Item name exactly as printed on the receipt")
-    generalized_name: str = Field(
-        description=(
-            "A short, generic name for this product with brand/size noise "
-            "removed, so the same product from different stores maps to the "
-            "same label, e.g. 'AH Halfvolle Melk 1L' -> 'Semi-skimmed Milk'."
-        )
-    )
-    category: str = Field(
-        description="Broad grocery category, e.g. dairy, produce, meat, bakery, household"
-    )
-    quantity: float = Field(description="Number of units purchased, default 1 if not printed")
-    unit: str = Field(
-        description="Unit the quantity is measured in: piece, kg, g, l, ml, etc."
-    )
-    total_price: float = Field(description="Total price paid for this line item, in the receipt's currency")
-    unit_price: Optional[float] = Field(
-        default=None,
-        description=(
-            "Price normalized to a standard unit (per kg or per l) when the "
-            "item is sold by weight/volume, to allow comparison across "
-            "package sizes and stores. Null for count-based items like 'piece'/'stuk'."
-        ),
-    )
-    unit_price_uom: Optional[str] = Field(
-        default=None, description="Unit the unit_price is expressed in, e.g. 'per kg', 'per l'"
-    )
-
-
-class ParsedReceipt(BaseModel):
-    store_name: str = Field(description="Store/merchant name as printed on the receipt")
-    receipt_date: str = Field(description="Date on the receipt in YYYY-MM-DD format; use today's date if illegible")
-    currency: str = Field(description="Currency symbol or code, e.g. EUR, USD, $, \u20ac")
-    items: list[ReceiptItem]
-    total: Optional[float] = Field(default=None, description="Total amount on the receipt, if printed")
 
 
 # --------------------------------------------------------------------------
@@ -154,22 +102,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-PROMPT = """You are given a photo of a shopping receipt. Extract every purchased
-line item and return it according to the provided schema.
-
-Rules:
-- Ignore non-item lines: subtotals, tax, payment method, loyalty point noise,
-  store addresses, barcodes.
-- If a quantity or unit isn't printed, assume quantity=1 and unit="piece".
-- Compute unit_price (per kg or per l) only when the item is naturally sold by
-  weight or volume (produce, meat, dairy, drinks). Leave it null for
-  count-based items (e.g. a single can, a box of pasta) unless the receipt
-  gives you both a weight and a total, in which case compute it.
-- generalized_name should be short (1-4 words) and store-agnostic so the same
-  product bought at two different stores gets the same generalized_name.
-- If the date is missing or unreadable, use {today}.
-"""
-
 
 @app.get("/")
 def health_check():
@@ -204,33 +136,9 @@ async def parse_receipt(
         raise HTTPException(413, f"Image exceeds {MAX_UPLOAD_BYTES // (1024*1024)}MB limit")
 
     try:
-        prompt = PROMPT.format(today=date.today().isoformat())
-        response = client.models.generate_content(
-            model=MODEL_NAME,
-            contents=[
-                types.Part.from_bytes(data=image_bytes, mime_type=file.content_type),
-                prompt,
-            ],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=ParsedReceipt,
-                temperature=0.1,
-                # Cap output tokens to bound the cost of any single call,
-                # even from an authenticated user. A typical receipt's
-                # structured JSON fits well under this limit.
-                max_output_tokens=4096,
-            ),
-        )
-    except Exception as exc:  # Surface upstream errors clearly to the client
-        raise HTTPException(502, f"Gemini request failed: {exc}") from exc
-
-    try:
-        text = response.text
-        if not text:
-            raise HTTPException(502, "Model returned an empty response.")
-        data = json.loads(text)
-    except (json.JSONDecodeError, TypeError) as exc:
-        raise HTTPException(502, f"Model returned unparseable output: {exc}") from exc
+        data = analyse_receipt(image_bytes, file)  # parser.parse_receipt(image_bytes)
+    except Exception as e:
+        raise e
 
     return ParsedReceipt.model_validate(data)
 
