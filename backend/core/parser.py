@@ -15,7 +15,7 @@ line item and return it according to the provided schema.
 Rules:
 - Ignore non-item lines: subtotals, tax, payment method, loyalty point noise,
   store addresses, barcodes.
-- If a quantity or unit isn't printed, assume quantity=1 and unit="piece". 
+- If a quantity or unit isn't printed, assume quantity=1 and unit="piece".
   Examples of units: stuk (piece), kg, g, l/L, ml.
 - Compute unit_price (per kg or per l) only when the item is naturally sold by
   weight or volume (produce, meat, dairy, drinks). Leave it null for
