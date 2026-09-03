@@ -9,6 +9,14 @@ entirely on your phone.
 📱 PWA (frontend/)  --photo-->  ☁️ FastAPI + Gemini (backend/)  --JSON-->  📱 localStorage
 ```
 
+<div align="center">
+
+## 📱 [Launch Grocery Price Index](https://andre-a-fernandes.github.io/grocery-price-index/frontend/)
+
+**Quick Start:** Open the link on your phone, tap your browser options (Share or ⋮), and select **"Add to Home Screen"** to install the app.
+
+</div>
+
 ## Why it's built this way
 
 - **One backend call, not two.** Instead of OCR (Vision/Document AI) feeding
