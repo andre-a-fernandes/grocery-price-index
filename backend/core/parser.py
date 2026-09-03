@@ -4,7 +4,7 @@ from datetime import date
 
 from google.genai import Client, types
 from fastapi import HTTPException, UploadFile
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from config.settings import MODEL_NAME
 
@@ -22,8 +22,11 @@ Rules:
   weight or volume (produce, meat, dairy, drinks). Leave it null for
   count-based items (e.g. a single can, a box of pasta) unless the receipt
   gives you both a weight (g/ml or kg/L) and a total, in which case compute it.
-- generalized_name should be short (1-4 words) and store-agnostic so the same
-  product bought at two different stores gets the same generalized_name.
+- generalized_name should be short (1-4 words), store-agnostic, and written in
+  Title Case for display (every word capitalised), e.g. "Semi-Skimmed Milk" or
+  "Whole Wheat Bread", so the same product bought at two different stores gets
+  the same generalized_name. The API normalises it into a lowercase comparison
+  key automatically.
 - If the date is missing or unreadable, use {today}.
 """
 
@@ -66,6 +69,19 @@ class ReceiptItem(BaseModel):
     unit_price_uom: Optional[str] = Field(
         default=None, description="Unit the unit_price is expressed in, e.g. 'per kg', 'per l'"
     )
+
+    @field_validator("generalized_name")
+    @classmethod
+    def normalize_generalized_name(cls, v: str) -> str:
+        """Normalize generalized_name to a lowercase, canonical comparison id.
+
+        The displayed label is Title Case (e.g. "Semi-Skimmed Milk"), but the
+        frontend groups/sorts by this id — so a case difference must never
+        split one product into two comparison buckets. Lowercase, strip, and
+        collapse internal whitespace so the same product always maps to the
+        same comparison id.
+        """
+        return " ".join(v.split()).lower()
 
 
 class ParsedReceipt(BaseModel):

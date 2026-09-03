@@ -384,7 +384,7 @@ function addItemRow(item = {}) {
   const inputName = document.createElement("input");
   inputName.type = "text";
   inputName.className = "f-name";
-  inputName.value = item.generalized_name ?? "";
+  inputName.value = titleCase(item.generalized_name);
   inputName.placeholder = "generalized name";
   const divRaw = document.createElement("div");
   divRaw.className = "muted";
@@ -435,7 +435,9 @@ $("#save-btn").addEventListener("click", () => {
   if (rows.length === 0) { toast("No items to save"); return; }
 
   const items = rows.map((tr) => ({
-    generalized_name: tr.querySelector(".f-name").value.trim(),
+    // Store the canonical lowercase id so comparison is robust regardless of
+    // how the user typed it; display applies Title Case later.
+    generalized_name: normalizeName(tr.querySelector(".f-name").value),
     quantity_label: tr.querySelector(".f-qty").value.trim(),
     total_price: parseFloat(tr.querySelector(".f-price").value) || 0,
     category: tr.dataset.category,
@@ -506,7 +508,7 @@ function renderHistory() {
       const left = document.createElement("div");
       const name = document.createElement("div");
       name.className = "name";
-      name.textContent = i.generalized_name;
+      name.textContent = titleCase(i.generalized_name);
       const sub = document.createElement("div");
       sub.className = "sub";
       sub.textContent = i.quantity_label || "";
@@ -543,11 +545,11 @@ function deleteReceipt(id) {
 function renderCompare() {
   const all = loadReceipts();
   const names = new Set();
-  all.forEach((r) => r.items.forEach((i) => names.add(i.generalized_name)));
+  all.forEach((r) => r.items.forEach((i) => names.add(normalizeName(i.generalized_name))));
 
   const select = $("#compare-select");
   const prevValue = select.value;
-  select.innerHTML = [...names].sort().map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
+  select.innerHTML = [...names].sort().map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(titleCase(n))}</option>`).join("");
   if (names.has(prevValue)) select.value = prevValue;
 
   select.onchange = () => renderCompareResults(select.value);
@@ -558,8 +560,9 @@ function renderCompare() {
 function renderCompareResults(name) {
   const all = loadReceipts();
   const rows = [];
+  const needle = normalizeName(name);
   all.forEach((r) => {
-    r.items.filter((i) => i.generalized_name === name).forEach((i) => {
+    r.items.filter((i) => normalizeName(i.generalized_name) === needle).forEach((i) => {
       rows.push({ store: r.store_name, date: r.receipt_date, currency: r.currency || "EUR", ...i });
     });
   });
@@ -604,7 +607,7 @@ $("#export-md-btn").addEventListener("click", async () => {
   all.forEach((r) => {
     const currency = r.currency || "EUR";
     r.items.forEach((i) => {
-      md += `| ${esc(i.generalized_name)} | ${esc(r.store_name)} | ${esc(r.receipt_date)} | ${esc(i.quantity_label)} | ${currency}${(i.total_price || 0).toFixed(2)} | ${i.unit_price ? `${currency}${i.unit_price.toFixed(2)} ${esc(i.unit_price_uom)}` : "\u2013"} |\n`;
+      md += `| ${esc(titleCase(i.generalized_name))} | ${esc(r.store_name)} | ${esc(r.receipt_date)} | ${esc(i.quantity_label)} | ${currency}${(i.total_price || 0).toFixed(2)} | ${i.unit_price ? `${currency}${i.unit_price.toFixed(2)} ${esc(i.unit_price_uom)}` : "\u2013"} |\n`;
     });
   });
 
@@ -616,6 +619,20 @@ $("#export-md-btn").addEventListener("click", async () => {
     prompt("Copy this markdown:", md);
   }
 });
+
+// Normalize a generalized name so 'Bread' and 'bread' collide to the same
+// comparison bucket. Lowercases the name and collapses internal whitespace 
+// so newly-parsed receipts and already-saved receipts group identically.
+function normalizeName(name) {
+  return String(name ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+// Title-case a name for display, e.g. 'semi-skimmed milk' -> 'Semi-Skimmed
+// Milk'. Comparison/grouping always uses normalizeName(); this is purely
+// cosmetic so the same lowercase id can still render nicely.
+function titleCase(name) {
+  return normalizeName(name).replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 function escapeHtml(str) {
   const map = {
