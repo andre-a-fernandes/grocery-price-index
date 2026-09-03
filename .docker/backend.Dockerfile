@@ -12,8 +12,9 @@ COPY uv.lock ./
 
 # Install dependencies into a project virtual environment.
 # --no-install-project skips editable-installing the backend package itself
+# --no-group dev skips the dev dependency group (pytest, ruff, httpx),
 # --frozen ensures we use the exact versions from the lock file.
-RUN uv sync --frozen --no-install-project --no-progress
+RUN uv sync --frozen --no-group dev --no-install-project --no-progress
 
 # Copy the application code.
 COPY backend/ ./

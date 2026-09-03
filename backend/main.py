@@ -31,13 +31,13 @@ import os
 import time
 from collections import defaultdict, deque
 from typing import Optional
-from dotenv import load_dotenv
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, File, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from core.parser import analyse_receipt, ParsedReceipt
 from config.settings import MODEL_NAME
+from core.parser import ParsedReceipt, analyse_receipt
 
 # Load .env file before reading any environment variables
 load_dotenv()
@@ -56,7 +56,9 @@ load_dotenv()
 # startup log warns loudly so this isn't accidental in production.
 APP_SECRET = os.environ.get("APP_SECRET", "")
 if not APP_SECRET:
-    print("[receipt-ledger] WARNING: APP_SECRET is not set — /ocr/parse-receipt is UNAUTHENTICATED.")
+    print(
+        "[receipt-ledger] WARNING: APP_SECRET is not set — /ocr/parse-receipt is UNAUTHENTICATED."
+    )
 
 MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_MB", "8")) * 1024 * 1024
 
@@ -133,7 +135,7 @@ async def parse_receipt(
     if not image_bytes:
         raise HTTPException(400, "Empty file upload")
     if len(image_bytes) > MAX_UPLOAD_BYTES:
-        raise HTTPException(413, f"Image exceeds {MAX_UPLOAD_BYTES // (1024*1024)}MB limit")
+        raise HTTPException(413, f"Image exceeds {MAX_UPLOAD_BYTES // (1024 * 1024)}MB limit")
 
     try:
         data = analyse_receipt(image_bytes, file)  # parser.parse_receipt(image_bytes)
