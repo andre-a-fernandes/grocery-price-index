@@ -10,31 +10,83 @@ on:
       - "backend/**"
       - ".github/workflows/ci_backend.yml"
 
+# Cancel superseded runs on new pushes to the same PR/branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  lint-and-test:
-    name: Lint, format check & test backend
+  lint:
+    name: Lint & format check
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: backend
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: "Set up Python"
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: ".python-version"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
+          version: "0.11.18" # matches the uv that generated uv.lock
           enable-cache: true
           cache-dependency-glob: uv.lock
 
       - name: Install dependencies
         run: uv sync --frozen
 
+      # --output-format=github emits ::error annotations directly on the PR diff.
       - name: Lint (ruff check)
-        run: uv run ruff check .
+        run: uv run ruff check --output-format=github .
 
       - name: Format check (ruff format)
-        run: uv run ruff format --check .
+        run: uv run ruff format --check --diff .
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write # create the test-report check run
+      pull-requests: write # annotate failures on the PR
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: "Set up Python"
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.11.18" # matches the uv that generated uv.lock
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Install dependencies
+        run: uv sync --frozen
 
       - name: Run tests (pytest)
-        run: uv run pytest
+        run: uv run pytest --junit-xml=test-report.xml
+
+      # Renders a pass/fail table in the job summary and annotates failed tests.
+      - name: Publish test report (job summary + PR annotations)
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        if: always() # publish even when pytest fails
+        with:
+          name: pytest
+          path: backend/test-report.xml
+          reporter: python-xunit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
