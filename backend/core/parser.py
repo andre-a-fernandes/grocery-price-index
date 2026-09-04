@@ -1,13 +1,12 @@
 import json
-from typing import Optional
 from datetime import date
+from typing import Optional
 
-from google.genai import Client, types
 from fastapi import HTTPException, UploadFile
+from google.genai import Client, types
 from pydantic import BaseModel, Field, field_validator
 
 from config.settings import MODEL_NAME
-
 
 # Cacth-all prompt for the Gemini model to extract structured data from a receipt image.
 PROMPT = """You are given a photo of a shopping receipt. Extract every purchased
@@ -16,7 +15,7 @@ line item and return it according to the provided schema.
 Rules:
 - Ignore non-item lines: subtotals, tax, payment method, loyalty point noise,
   store addresses, barcodes.
-- If a quantity or unit isn't printed, assume quantity=1 and unit="piece". 
+- If a quantity or unit isn't printed, assume quantity=1 and unit="piece".
   Examples of units: stuk (piece), kg, g, l/L, ml.
 - Compute unit_price (per kg or per l) only when the item is naturally sold by
   weight or volume (produce, meat, dairy, drinks). Leave it null for
@@ -54,10 +53,10 @@ class ReceiptItem(BaseModel):
             + "Should match the unit, e.g. 1.5 kg, 2 L, 3 pieces, etc."
         )
     )
-    unit: str = Field(
-        description="Unit the quantity is measured in: piece, kg, g, l, ml, etc."
+    unit: str = Field(description="Unit the quantity is measured in: piece, kg, g, l, ml, etc.")
+    total_price: float = Field(
+        description="Total price paid for this line item, in the receipt's currency"
     )
-    total_price: float = Field(description="Total price paid for this line item, in the receipt's currency")
     unit_price: Optional[float] = Field(
         default=None,
         description=(
@@ -86,10 +85,14 @@ class ReceiptItem(BaseModel):
 
 class ParsedReceipt(BaseModel):
     store_name: str = Field(description="Store/merchant name as printed on the receipt")
-    receipt_date: str = Field(description="Date on the receipt in YYYY-MM-DD format; use today's date if illegible")
+    receipt_date: str = Field(
+        description="Date on the receipt in YYYY-MM-DD format; use today's date if illegible"
+    )
     currency: str = Field(description="Currency symbol or code, e.g. EUR, USD, $, \u20ac")
     items: list[ReceiptItem]
-    total: Optional[float] = Field(default=None, description="Total amount on the receipt, if printed")
+    total: Optional[float] = Field(
+        default=None, description="Total amount on the receipt, if printed"
+    )
 
 
 def analyse_receipt(image_bytes: bytes, file: UploadFile) -> dict:

@@ -1,0 +1,19 @@
+# Ruff rev matches the ruff version pinned in uv.lock (CI + hooks agree).
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.6
+    hooks:
+      # Lint (E, F, I rules from backend/pyproject.toml); auto-fix where possible.
+      - id: ruff-check
+        args: [--fix]
+      # Enforce the same formatting CI checks.
+      - id: ruff-format
+
+  # Basic file hygiene.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files

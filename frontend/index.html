@@ -182,7 +182,7 @@
         <strong>Tap to photograph a receipt</strong>
         opens your camera directly
       </div>
-      <!-- Transparent 1x1 px fallback src --> 
+      <!-- Transparent 1x1 px fallback src -->
       <img id="preview-img" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="receipt preview" />
       <input id="camera-input" type="file" accept="image/*" capture="environment" />
       <button id="parse-btn" class="btn-primary" style="margin-top:10px; display:none;">Parse receipt</button>
@@ -621,7 +621,7 @@ $("#export-md-btn").addEventListener("click", async () => {
 });
 
 // Normalize a generalized name so 'Bread' and 'bread' collide to the same
-// comparison bucket. Lowercases the name and collapses internal whitespace 
+// comparison bucket. Lowercases the name and collapses internal whitespace
 // so newly-parsed receipts and already-saved receipts group identically.
 function normalizeName(name) {
   return String(name ?? "").trim().toLowerCase().replace(/\s+/g, " ");
