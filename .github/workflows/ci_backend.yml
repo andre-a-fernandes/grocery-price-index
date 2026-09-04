@@ -44,9 +44,25 @@ jobs:
       # --output-format=github emits ::error annotations directly on the PR diff.
       - name: Lint (ruff check)
         run: uv run ruff check --output-format=github .
+      
+      - name: Summarize lint failure
+        if: failure()
+        run: |
+          echo "### ❌ Lint failed" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          uv run ruff check --output-format=github . >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Format check (ruff format)
         run: uv run ruff format --check --diff .
+
+      - name: Summarize format failure
+        if: failure()
+        run: |
+          echo "### ❌ Format check failed" >> "$GITHUB_STEP_SUMMARY"
+          echo '```diff' >> "$GITHUB_STEP_SUMMARY"
+          uv run ruff format --check --diff --output-format=github . >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
 
   test:
     name: Tests
