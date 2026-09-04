@@ -64,6 +64,10 @@ jobs:
           uv run ruff format --check --diff --output-format=github . >> "$GITHUB_STEP_SUMMARY" || true
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Summarize job success
+        if: success()
+        run: echo "### ✅ Lint & format passed" >> "$GITHUB_STEP_SUMMARY"
+
   test:
     name: Tests
     runs-on: ubuntu-latest
