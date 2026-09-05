@@ -165,8 +165,10 @@ options:
    chrome, like a native app.
 4. On first use, tap **backend settings** on the Scan tab and paste in your
    backend URL from step 1 (e.g. `https://receipt-ledger-xxxx.run.app`) and,
-   if you set `APP_SECRET` on the backend, the matching secret. Both are
-   saved locally and you won't need to re-enter them.
+   if you set `APP_SECRET` on the backend, the matching secret. The backend
+   URL is saved locally, but the secret is held in memory only — it doesn't
+   persist, so after a browser reload or app restart you'll need to re-enter
+   it before scanning.
 
 ---
 
@@ -255,8 +257,10 @@ independent layers, none of which require a database or user accounts:
 
 1. **Shared secret (`APP_SECRET`).** Set it as an env var on your backend
    deploy, and enter the identical value into the PWA's settings panel
-   (stored in `localStorage`, never committed to git). Requests without a
-   matching `X-App-Secret` header get `401`. This isn't "real" auth — a
+   (kept only in the PWA's memory — never `localStorage`/cookies — so it
+   can't be read from browser storage; re-enter it after a reload). Requests
+   without a matching `X-App-Secret` header get `401`. This isn't "real"
+   auth — a
    secret that a client-side app sends can theoretically be intercepted —
    but it stops anyone from calling your API just by finding the URL,
    which is the realistic threat for a hobby deploy.

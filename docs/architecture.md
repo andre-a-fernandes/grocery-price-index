@@ -39,7 +39,9 @@ The frontend is a single static HTML document (`frontend/index.html`) with no bu
 Since the app is single-user without an account system, backend security focuses on preventing unauthorized access to the Gemini API endpoint:
 
 1. **Shared Secret (`APP_SECRET`):**
-   - Configured on the backend deploy and saved in the PWA's local settings.
+   - Configured on the backend deploy and entered into the PWA's settings
+     panel — kept in memory only, not `localStorage`/cookies, so it isn't
+     readable from browser storage; re-entered after a reload.
    - Sent via the `X-App-Secret` request header.
    - Rejects unauthenticated requests with `401 Unauthorized`.
 
