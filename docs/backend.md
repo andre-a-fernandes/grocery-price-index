@@ -22,7 +22,7 @@ Health check / liveness probe.
 ```json
 {
   "status": "ok",
-  "model": "gemini-2.5-flash"
+  "model": "gemini-3.1-flash-lite"
 }
 ```
 
@@ -87,7 +87,7 @@ All settings are configured via environment variables:
 | `GOOGLE_CLOUD_PROJECT` | — | GCP project ID for Vertex AI |
 | `GOOGLE_CLOUD_LOCATION` | `us-central1` | GCP region for Vertex AI |
 | `GOOGLE_APPLICATION_CREDENTIALS` | — | Path to service account JSON for Vertex AI |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | Gemini model name |
+| `GEMINI_MODEL` | `gemini-3.1-flash-lite` | Gemini model name |
 | `APP_SECRET` | — (unauthenticated) | Shared secret required in `X-App-Secret` header |
 | `RATE_LIMIT_MAX_REQUESTS` | `20` | Maximum requests per IP per window |
 | `RATE_LIMIT_WINDOW_SECONDS` | `3600` | Rate limit window duration (in seconds) |
