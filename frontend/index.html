@@ -607,8 +607,8 @@ $("#export-md-btn").addEventListener("click", async () => {
   const all = loadReceipts();
   if (all.length === 0) { toast("Nothing to export yet"); return; }
 
-  // Escape pipe characters so they don't break the markdown table
-  const esc = (s) => String(s ?? "").replace(/\|/g, "\\|");
+  // Escape backslashes and pipe characters so they don't break the markdown table
+  const esc = (s) => String(s ?? "").replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
 
   let md = "| Item | Store | Date | Qty | Price | Unit price |\n";
   md += "|---|---|---|---|---|---|\n";
