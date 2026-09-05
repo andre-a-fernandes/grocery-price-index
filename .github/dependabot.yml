@@ -9,7 +9,7 @@ updates:
     schedule:
       interval: "weekly"
   # Enable version updates for Docker
-  - package-ecosystem: "uv"
+  - package-ecosystem: "docker"
     directory: "/"
     schedule:
       interval: "weekly"

@@ -1,6 +1,6 @@
 import os
-import urllib.request
 import sys
+import urllib.request
 
 port = os.environ.get("PORT", "7860")
 try:
