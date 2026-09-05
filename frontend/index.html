@@ -256,12 +256,9 @@
 
 const STORAGE_KEY = "receipts_v1";
 const BACKEND_KEY = "backend_url_v1";
-const SECRET_KEY = "app_secret_v1";
-// This secret is stored only in this browser's localStorage — it is never
-// present in the source file itself, so it isn't in the git repo/deploy
-// bundle. Anyone who deploys their own copy of this frontend still has to
-// be told the secret out-of-band (by you) before their copy can call your
-// backend successfully.
+let appSecretMemory = "";
+// The app secret lives only in this tab's memory — never localStorage/cookies —
+// so you must re-enter it in settings after every page reload.
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
@@ -281,10 +278,10 @@ function setBackendUrl(url) {
   localStorage.setItem(BACKEND_KEY, url.trim().replace(/\/$/, ""));
 }
 function getAppSecret() {
-  return localStorage.getItem(SECRET_KEY) || "";
+  return appSecretMemory;
 }
 function setAppSecret(secret) {
-  localStorage.setItem(SECRET_KEY, secret.trim());
+  appSecretMemory = secret.trim();
 }
 
 // ---- toast --------------------------------------------------------------
@@ -607,8 +604,8 @@ $("#export-md-btn").addEventListener("click", async () => {
   const all = loadReceipts();
   if (all.length === 0) { toast("Nothing to export yet"); return; }
 
-  // Escape pipe characters so they don't break the markdown table
-  const esc = (s) => String(s ?? "").replace(/\|/g, "\\|");
+  // Escape backslashes and pipe characters so they don't break the markdown table
+  const esc = (s) => String(s ?? "").replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
 
   let md = "| Item | Store | Date | Qty | Price | Unit price |\n";
   md += "|---|---|---|---|---|---|\n";

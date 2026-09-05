@@ -47,10 +47,9 @@ load_dotenv()
 # Security
 # --------------------------------------------------------------------------
 # APP_SECRET is a shared secret between this backend and the PWA client.
-# It is not a substitute for real auth — it prevents anyone who finds the
-# URL from calling the API. Set it as an env var on your deploy platform
-# and enter the same value in the PWA's settings panel (stored in the
-# browser's localStorage, never committed to the repo).
+# Not real auth — it just stops anyone who finds the URL from calling the
+# API. Set it as an env var and enter the same value in the PWA's settings
+# panel (the client keeps it in memory only, see frontend/README.md).
 #
 # If APP_SECRET is unset, auth is skipped (useful for local dev). The
 # startup log warns loudly so this isn't accidental in production.
