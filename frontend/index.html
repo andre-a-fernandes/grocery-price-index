@@ -215,6 +215,14 @@
 
   <!-- HISTORY VIEW -->
   <section class="view" id="view-history">
+    <div class="card">
+      <div style="font-weight: 600; font-size: 13px; margin-bottom: 8px;">Backup & Restore</div>
+      <div class="btn-row">
+        <button class="btn-ghost" id="export-json-btn" type="button">Export JSON</button>
+        <button class="btn-ghost" id="import-json-btn" type="button">Import JSON</button>
+      </div>
+      <input type="file" id="import-json-input" accept=".json,application/json" style="display:none;" />
+    </div>
     <div id="history-list"></div>
   </section>
 
@@ -618,6 +626,112 @@ $("#export-md-btn").addEventListener("click", async () => {
     // clipboard API can fail without a user gesture/https; fall back to a prompt
     prompt("Copy this markdown:", md);
   }
+});
+
+// ---- json export / import --------------------------------------------------
+$("#export-json-btn").addEventListener("click", () => {
+  const all = loadReceipts();
+  if (all.length === 0) { toast("Nothing to export yet"); return; }
+
+  const jsonStr = JSON.stringify(all, null, 2);
+  const blob = new Blob([jsonStr], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `receipts-ledger-${dateStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast(`Exported ${all.length} receipt${all.length === 1 ? "" : "s"}`);
+});
+
+$("#import-json-btn").addEventListener("click", () => {
+  $("#import-json-input").click();
+});
+
+$("#import-json-input").addEventListener("change", (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try {
+      const data = JSON.parse(evt.target.result);
+      const importedReceipts = Array.isArray(data)
+        ? data
+        : (data && Array.isArray(data.receipts) ? data.receipts : null);
+
+      if (!importedReceipts) {
+        toast("Invalid backup file format");
+        return;
+      }
+
+      // Filter and validate basic structure
+      const validReceipts = importedReceipts.filter(
+        (r) => r && typeof r === "object" && Array.isArray(r.items)
+      );
+
+      if (validReceipts.length === 0) {
+        toast("No valid receipts found in file");
+        return;
+      }
+
+      const existing = loadReceipts();
+      const existingMap = new Map(existing.map((r) => [r.id, r]));
+
+      let addedCount = 0;
+      let updatedCount = 0;
+
+      validReceipts.forEach((r) => {
+        const id = r.id || (typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : "r_" + Date.now() + "_" + Math.random().toString(36).substring(2, 9));
+
+        const formatted = {
+          id: id,
+          store_name: String(r.store_name || "Unknown store"),
+          receipt_date: String(r.receipt_date || new Date().toISOString().slice(0, 10)),
+          saved_at: String(r.saved_at || new Date().toISOString()),
+          currency: r.currency || "EUR",
+          items: r.items.map((i) => ({
+            generalized_name: String(i.generalized_name || ""),
+            quantity_label: String(i.quantity_label || ""),
+            total_price: Number(i.total_price) || 0,
+            category: i.category ? String(i.category) : undefined,
+            unit_price: i.unit_price !== undefined && i.unit_price !== null ? Number(i.unit_price) : undefined,
+            unit_price_uom: i.unit_price_uom ? String(i.unit_price_uom) : undefined,
+          }))
+        };
+
+        if (existingMap.has(id)) {
+          existingMap.set(id, formatted);
+          updatedCount++;
+        } else {
+          existingMap.set(id, formatted);
+          addedCount++;
+        }
+      });
+
+      const merged = Array.from(existingMap.values());
+      saveReceipts(merged);
+
+      renderHistory();
+      renderCompare();
+
+      toast(`Imported ${addedCount} new, ${updatedCount} updated`);
+    } catch (err) {
+      toast("Failed to parse JSON file");
+    } finally {
+      e.target.value = "";
+    }
+  };
+  reader.onerror = () => {
+    toast("Failed to read file");
+    e.target.value = "";
+  };
+  reader.readAsText(file);
 });
 
 // Normalize a generalized name so 'Bread' and 'bread' collide to the same

@@ -36,7 +36,7 @@ entirely on your phone.
 
 - **Scan tab** — take a photo → Gemini parses it → review/edit the table →
   save.
-- **History tab** — every saved receipt, itemized, with a delete option.
+- **History tab** — every saved receipt, itemized, with a delete option, plus **Export JSON** and **Import JSON** to backup/restore your ledger across updates or devices.
 - **Compare tab** — pick a generalized item (e.g. "milk") and see it ranked
   cheapest-first across every store/date you've scanned, using price-per-kg/l
   where applicable.
@@ -182,7 +182,13 @@ options:
 
 ---
 
-## Project structure
+## Documentation & Project structure
+
+Detailed documentation is available in the [`docs/`](docs/) directory:
+
+- [**`docs/architecture.md`**](docs/architecture.md) — System overview, design decisions, and security model.
+- [**`docs/frontend.md`**](docs/frontend.md) — Frontend PWA architecture, `localStorage` schema, and **JSON Export & Import Specification**.
+- [**`docs/backend.md`**](docs/backend.md) — API endpoints, environment variables, local testing, and production deployment guides.
 
 ```
 grocery-price-index/
@@ -190,10 +196,16 @@ grocery-price-index/
 │   └── backend.Dockerfile # works for both HF Spaces and Cloud Run (build from repo root)
 ├── backend/
 │   ├── main.py            # FastAPI app: POST /ocr/parse-receipt
+│   ├── README.md          # quick start (points to docs/backend.md)
 │   ├── pyproject.toml     # Python project config & dependencies
 │   └── .env.example       # environment variable template
+├── docs/
+│   ├── architecture.md    # system architecture & security model
+│   ├── frontend.md        # PWA frontend, data schema & JSON import/export spec
+│   └── backend.md         # API reference & deployment guide
 ├── frontend/
 │   ├── index.html         # entire UI + logic, no build step
+│   ├── README.md          # quick start (points to docs/frontend.md)
 │   ├── manifest.json      # PWA install metadata
 │   ├── sw.js              # offline app-shell cache
 │   └── icon.png
@@ -226,6 +238,8 @@ Each saved receipt in `localStorage["receipts_v1"]`:
   ]
 }
 ```
+
+For full details on data interfaces, supported JSON import/export structures, and validation rules, see [**`docs/frontend.md`**](docs/frontend.md).
 
 `generalized_name` is what the Compare tab groups on — it's what lets "AH
 Halfvolle Melk 1L" and "Jumbo Verse Melk 1L" both roll up under "milk" for
