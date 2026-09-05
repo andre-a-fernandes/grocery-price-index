@@ -70,15 +70,7 @@ python main.py
 
 Visit `http://localhost:8000` — you should see `{"status": "ok", ...}`.
 
-### Deploy for free — zero cost, no card required
-
-> **On cost:** the Gemini API call itself has its own pricing (a free tier
-> is available via AI Studio). For hosting the backend, the recommended
-> option below (Hugging Face Spaces) is free with **no credit card
-> required**. Cloud Run's free tier (2M requests/month) would also cost $0
-> for personal use, but Google requires a billing card on file even within
-> the free tier — it won't auto-charge, but a card must be attached. Both
-> options are documented below; use whichever fits your preferences.
+### Deploy for free
 
 #### Hugging Face Spaces — recommended, genuinely free, no card
 
