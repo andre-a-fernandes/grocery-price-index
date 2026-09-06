@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#F7F3E8" />
+<meta name="theme-color" id="meta-theme-color" content="#F6F7F8" />
 <title>Receipt Ledger</title>
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icon.png" />
@@ -13,15 +13,30 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --paper: #F7F3E8;
-    --paper-dark: #ECE6D6;
-    --ink: #241F19;
-    --ink-soft: #6B6255;
-    --green: #4B6E4E;
-    --green-soft: #E3EBE0;
-    --stamp: #B23A2E;
-    --line: #D9D0BC;
-    --radius: 3px;
+    --paper: #F6F7F8;
+    --paper-dark: #EBEDEF;
+    --ink: #1B1D21;
+    --ink-soft: #68707A;
+    --green: #31AF68;
+    --green-soft: #E7F4ED;
+    --danger: #C93A3A;
+    --line: #E2E4E8;
+    --card: #FFFFFF;
+    --shadow: 0 1px 3px rgba(14, 18, 22, 0.08);
+    --radius: 5px;
+  }
+  /* Dark mode — neutral near-black, accent stays brand green. */
+  html[data-theme="dark"] {
+    --paper: #121518;
+    --paper-dark: #1C2024;
+    --ink: #E6E8EB;
+    --ink-soft: #9BA2AB;
+    --green: #35B97C;
+    --green-soft: #173027;
+    --danger: #E05858;
+    --line: #2A2E33;
+    --card: #1A1E22;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   }
   * { box-sizing: border-box; }
   body {
@@ -52,11 +67,23 @@
     align-items: baseline;
     gap: 8px;
   }
-  header.top h1 .tick { color: var(--stamp); }
+  header.top h1 .tick { color: var(--green); }
   header.top p {
     margin: 4px 0 0;
     font-size: 12px;
     color: var(--ink-soft);
+  }
+  #theme-toggle {
+    position: absolute;
+    right: 14px;
+    top: 20px;
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--ink);
+    font-size: 15px;
+    line-height: 1;
+    padding: 6px 8px;
+    cursor: pointer;
   }
   main { padding: 16px; max-width: 640px; margin: 0 auto; }
   .view { display: none; animation: fade .15s ease; }
@@ -64,9 +91,10 @@
   @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 
   .card {
-    background: #fff;
+    background: var(--card);
     border: 1px solid var(--line);
     border-radius: var(--radius);
+    box-shadow: var(--shadow);
     padding: 16px;
     margin-bottom: 14px;
     position: relative;
@@ -94,7 +122,7 @@
   .btn-primary { background: var(--green); color: #fff; width: 100%; }
   .btn-primary:disabled { opacity: 0.5; }
   .btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
-  .btn-danger { background: transparent; color: var(--stamp); border: 1px solid var(--stamp); }
+  .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
   .btn-row { display: flex; gap: 8px; margin-top: 10px; }
   .btn-row button { flex: 1; }
 
@@ -126,7 +154,7 @@
   th { text-align: left; color: var(--ink-soft); font-weight: 600; font-size: 10px; text-transform: uppercase; padding: 6px 4px; border-bottom: 1px solid var(--line); }
   td { padding: 6px 4px; border-bottom: 1px dashed var(--line); vertical-align: top; }
   td input { padding: 4px 6px; font-size: 12px; }
-  .price-cell { color: var(--stamp); font-weight: 600; white-space: nowrap; }
+  .price-cell { color: var(--green); font-weight: 600; white-space: nowrap; }
   .muted { color: var(--ink-soft); font-size: 11px; }
 
   .receipt-item {
@@ -171,6 +199,7 @@
 <header class="top">
   <h1>Receipt Ledger <span class="tick">·</span></h1>
   <p>scan &rarr; structure &rarr; compare prices across stores</p>
+  <button id="theme-toggle" type="button" title="Toggle light / dark mode" aria-label="Toggle light / dark mode">☀</button>
 </header>
 
 <main>
@@ -257,6 +286,7 @@
 const STORAGE_KEY = "receipts_v1";
 const BACKEND_KEY = "backend_url_v1";
 const SECRET_KEY = "app_secret_v1";
+const THEME_KEY = "theme_v1";
 // This secret is stored only in this browser's localStorage — it is never
 // present in the source file itself, so it isn't in the git repo/deploy
 // bundle. Anyone who deploys their own copy of this frontend still has to
@@ -286,6 +316,36 @@ function getAppSecret() {
 function setAppSecret(secret) {
   localStorage.setItem(SECRET_KEY, secret.trim());
 }
+
+// ---- theme (light/dark) --------------------------------------------------
+const THEME_LIGHT = "#F6F7F8";
+const THEME_DARK = "#121518";
+function getTheme() {
+  return localStorage.getItem(THEME_KEY) || "";
+}
+function setTheme(theme) {
+  localStorage.setItem(THEME_KEY, theme);
+  applyTheme(theme);
+}
+function applyTheme(theme) {
+  const dark = theme === "dark";
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  $("#theme-toggle").textContent = dark ? "☀" : "☾";
+  const meta = $("#meta-theme-color");
+  if (meta) meta.setAttribute("content", dark ? THEME_DARK : THEME_LIGHT);
+}
+$("#theme-toggle").addEventListener("click", () => {
+  setTheme(getTheme() === "dark" ? "light" : "dark");
+});
+// Default: honour the saved choice, else fall back to the OS preference.
+const savedTheme = getTheme();
+applyTheme(
+  savedTheme ||
+    (window.matchMedia &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light")
+);
 
 // ---- toast --------------------------------------------------------------
 let toastTimer;

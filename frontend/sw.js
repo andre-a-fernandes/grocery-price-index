@@ -1,7 +1,7 @@
 // Minimal app-shell cache so the UI still opens (and your saved ledger,
 // which lives in localStorage, is still readable) without a network
 // connection. The /ocr/parse-receipt call itself still needs a connection.
-const CACHE = "receipt-ledger-v1";
+const CACHE = "receipt-ledger-v2";
 const SHELL = ["./index.html", "./manifest.json"];
 
 self.addEventListener("install", (event) => {
