@@ -20,6 +20,9 @@
     --green: #31AF68;
     --green-soft: #E7F4ED;
     --danger: #C93A3A;
+    /* Accent fill for action buttons — brand green, white text. */
+    --accent: var(--green);
+    --on-accent: #FFFFFF;
     --line: #E2E4E8;
     --card: #FFFFFF;
     --shadow: 0 1px 3px rgba(14, 18, 22, 0.08);
@@ -34,11 +37,18 @@
     --green: #35B97C;
     --green-soft: #173027;
     --danger: #E05858;
+    /* Dark mode uses the brand green as the accent fill, white text. */
+    --accent: var(--green);
+    --on-accent: #FFFFFF;
     --line: #2A2E33;
     --card: #1A1E22;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   }
   * { box-sizing: border-box; }
+  :focus-visible {
+    outline: 2px solid var(--green);
+    outline-offset: 2px;
+  }
   body {
     margin: 0;
     background: var(--paper);
@@ -58,7 +68,12 @@
     position: sticky;
     top: 0;
     z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
   }
+  header.top .brand { min-width: 0; }
   header.top h1 {
     font-size: 22px;
     font-weight: 700;
@@ -73,17 +88,44 @@
     font-size: 12px;
     color: var(--ink-soft);
   }
-  #theme-toggle {
-    position: absolute;
-    right: 14px;
-    top: 20px;
-    background: none;
+  .theme-switch {
+    position: relative;
+    width: 62px;
+    height: 30px;
+    border-radius: 15px;
+    background: var(--paper-dark);
     border: 1px solid var(--line);
-    color: var(--ink);
+    cursor: pointer;
+    flex: 0 0 auto;
+    appearance: none;
+    transition: background .2s ease;
+  }
+  .theme-switch .knob {
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,.25);
+    transition: transform .22s ease;
+  }
+  .theme-switch .knob::before {
+    content: "\2600";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     font-size: 15px;
     line-height: 1;
-    padding: 6px 8px;
-    cursor: pointer;
+  }
+  html[data-theme="dark"] .theme-switch .knob {
+    transform: translateX(33px);
+  }
+  html[data-theme="dark"] .theme-switch .knob::before {
+    content: "\263E";
   }
   main { padding: 16px; max-width: 640px; margin: 0 auto; }
   .view { display: none; animation: fade .15s ease; }
@@ -99,17 +141,6 @@
     margin-bottom: 14px;
     position: relative;
   }
-  .card::before {
-    content: "";
-    position: absolute;
-    top: -1px; left: 0; right: 0;
-    height: 6px;
-    background: repeating-linear-gradient(
-      -45deg, var(--paper) 0 5px, transparent 5px 10px
-    );
-    background-color: var(--line);
-  }
-
   button {
     font-family: inherit;
     font-size: 14px;
@@ -119,9 +150,13 @@
     cursor: pointer;
     font-weight: 600;
   }
-  .btn-primary { background: var(--green); color: #fff; width: 100%; }
+  .btn-primary { background: var(--green); color: var(--on-accent); width: 100%; text-shadow: 0 1px 1px rgba(255,255,255,.18); }
   .btn-primary:disabled { opacity: 0.5; }
-  .btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  .btn-primary:hover:not(:disabled) { filter: brightness(1.05); }
+  .btn-primary:active:not(:disabled) { filter: brightness(0.92); }
+  .btn-ghost { background: var(--accent); color: var(--on-accent); border: none; text-shadow: 0 1px 1px rgba(255,255,255,.18); }
+  .btn-ghost:hover { filter: brightness(1.05); }
+  .btn-ghost:active { filter: brightness(0.92); }
   .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
   .btn-row { display: flex; gap: 8px; margin-top: 10px; }
   .btn-row button { flex: 1; }
@@ -140,14 +175,17 @@
 
   #camera-input { display: none; }
   .capture-zone {
-    border: 1.5px dashed var(--line);
+    background: var(--accent);
+    color: var(--on-accent);
+    border: none;
     border-radius: var(--radius);
     text-align: center;
     padding: 40px 16px;
     cursor: pointer;
-    color: var(--ink-soft);
   }
-  .capture-zone strong { display: block; color: var(--ink); font-size: 15px; margin-bottom: 4px; }
+  .capture-zone strong { display: block; color: var(--on-accent); font-size: 15px; margin-bottom: 4px; }
+  .capture-zone { text-shadow: 0 1px 1px rgba(255,255,255,.18); }
+  .capture-zone:active { filter: brightness(0.92); }
   #preview-img { width: 100%; border-radius: var(--radius); margin-bottom: 10px; display: none; max-height: 280px; object-fit: cover; }
 
   table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -170,7 +208,8 @@
     display: flex;
     background: var(--paper);
     border-top: 1.5px dashed var(--line);
-    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+    padding: 8px 10px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
     z-index: 5;
   }
   nav.tabs button {
@@ -197,9 +236,14 @@
 <body>
 
 <header class="top">
-  <h1>Receipt Ledger <span class="tick">·</span></h1>
-  <p>scan &rarr; structure &rarr; compare prices across stores</p>
-  <button id="theme-toggle" type="button" title="Toggle light / dark mode" aria-label="Toggle light / dark mode">☀</button>
+  <div class="brand">
+    <h1>Receipt Ledger <span class="tick">·</span></h1>
+    <p>scan &rarr; structure &rarr; compare prices across stores</p>
+  </div>
+  <button id="theme-toggle" class="theme-switch" type="button" role="switch"
+          aria-checked="false" aria-label="Toggle light / dark mode" title="Toggle light / dark mode">
+    <span class="knob"></span>
+  </button>
 </header>
 
 <main>
@@ -330,7 +374,7 @@ function setTheme(theme) {
 function applyTheme(theme) {
   const dark = theme === "dark";
   document.documentElement.dataset.theme = dark ? "dark" : "light";
-  $("#theme-toggle").textContent = dark ? "☀" : "☾";
+  $("#theme-toggle").setAttribute("aria-checked", dark ? "true" : "false");
   const meta = $("#meta-theme-color");
   if (meta) meta.setAttribute("content", dark ? THEME_DARK : THEME_LIGHT);
 }
