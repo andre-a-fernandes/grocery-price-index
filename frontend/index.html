@@ -3,7 +3,19 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#F7F3E8" />
+<meta name="theme-color" id="meta-theme-color" content="#F6F7F8" />
+<script>
+  // Apply theme before first paint to avoid a light-flash for dark-mode users.
+  (function () {
+    const key = "theme_v1";
+    const dark =
+      localStorage.getItem(key) === "dark" ||
+      (localStorage.getItem(key) !== "light" &&
+        window.matchMedia &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
 <title>Receipt Ledger</title>
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icon.png" />
@@ -13,17 +25,43 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --paper: #F7F3E8;
-    --paper-dark: #ECE6D6;
-    --ink: #241F19;
-    --ink-soft: #6B6255;
-    --green: #4B6E4E;
-    --green-soft: #E3EBE0;
-    --stamp: #B23A2E;
-    --line: #D9D0BC;
-    --radius: 3px;
+    --paper: #F6F7F8;
+    --paper-dark: #EBEDEF;
+    --ink: #1B1D21;
+    --ink-soft: #68707A;
+    --green: #31AF68;
+    --green-soft: #E7F4ED;
+    --danger: #C93A3A;
+    /* Accent fill for action buttons — brand green, white text. */
+    --accent: var(--green);
+    --on-accent: #FFFFFF;
+    --line: #E2E4E8;
+    --card: #FFFFFF;
+    --shadow: 0 1px 3px rgba(14, 18, 22, 0.08);
+    --radius: 5px;
+  }
+  /* Dark mode — neutral near-black, accent stays brand green. */
+  html[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #121518;
+    --paper-dark: #1C2024;
+    --ink: #E6E8EB;
+    --ink-soft: #9BA2AB;
+    --green: #35B97C;
+    --green-soft: #173027;
+    --danger: #E05858;
+    /* Dark mode uses the brand green as the accent fill, white text. */
+    --accent: var(--green);
+    --on-accent: #FFFFFF;
+    --line: #2A2E33;
+    --card: #1A1E22;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   }
   * { box-sizing: border-box; }
+  :focus-visible {
+    outline: 2px solid var(--green);
+    outline-offset: 2px;
+  }
   body {
     margin: 0;
     background: var(--paper);
@@ -43,7 +81,12 @@
     position: sticky;
     top: 0;
     z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
   }
+  header.top .brand { min-width: 0; }
   header.top h1 {
     font-size: 22px;
     font-weight: 700;
@@ -52,11 +95,50 @@
     align-items: baseline;
     gap: 8px;
   }
-  header.top h1 .tick { color: var(--stamp); }
+  header.top h1 .tick { color: var(--green); }
   header.top p {
     margin: 4px 0 0;
     font-size: 12px;
     color: var(--ink-soft);
+  }
+  .theme-switch {
+    position: relative;
+    width: 62px;
+    height: 30px;
+    border-radius: 15px;
+    background: var(--paper-dark);
+    border: 1px solid var(--line);
+    cursor: pointer;
+    flex: 0 0 auto;
+    appearance: none;
+    transition: background .2s ease;
+  }
+  .theme-switch .knob {
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,.25);
+    transition: transform .22s ease;
+  }
+  .theme-switch .knob::before {
+    content: "\2600";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 15px;
+    line-height: 1;
+  }
+  html[data-theme="dark"] .theme-switch .knob {
+    transform: translateX(33px);
+  }
+  html[data-theme="dark"] .theme-switch .knob::before {
+    content: "\263E";
   }
   main { padding: 16px; max-width: 640px; margin: 0 auto; }
   .view { display: none; animation: fade .15s ease; }
@@ -64,24 +146,14 @@
   @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 
   .card {
-    background: #fff;
+    background: var(--card);
     border: 1px solid var(--line);
     border-radius: var(--radius);
+    box-shadow: var(--shadow);
     padding: 16px;
     margin-bottom: 14px;
     position: relative;
   }
-  .card::before {
-    content: "";
-    position: absolute;
-    top: -1px; left: 0; right: 0;
-    height: 6px;
-    background: repeating-linear-gradient(
-      -45deg, var(--paper) 0 5px, transparent 5px 10px
-    );
-    background-color: var(--line);
-  }
-
   button {
     font-family: inherit;
     font-size: 14px;
@@ -91,10 +163,14 @@
     cursor: pointer;
     font-weight: 600;
   }
-  .btn-primary { background: var(--green); color: #fff; width: 100%; }
+  .btn-primary { background: var(--accent); color: var(--on-accent); width: 100%; text-shadow: 0 1px 1px rgba(255,255,255,.18); }
   .btn-primary:disabled { opacity: 0.5; }
-  .btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
-  .btn-danger { background: transparent; color: var(--stamp); border: 1px solid var(--stamp); }
+  .btn-primary:hover:not(:disabled) { filter: brightness(1.05); }
+  .btn-primary:active:not(:disabled) { filter: brightness(0.92); }
+  .btn-ghost { background: var(--accent); color: var(--on-accent); border: none; text-shadow: 0 1px 1px rgba(255,255,255,.18); }
+  .btn-ghost:hover { filter: brightness(1.05); }
+  .btn-ghost:active { filter: brightness(0.92); }
+  .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
   .btn-row { display: flex; gap: 8px; margin-top: 10px; }
   .btn-row button { flex: 1; }
 
@@ -112,21 +188,24 @@
 
   #camera-input { display: none; }
   .capture-zone {
-    border: 1.5px dashed var(--line);
+    background: var(--accent);
+    color: var(--on-accent);
+    border: none;
     border-radius: var(--radius);
     text-align: center;
     padding: 40px 16px;
     cursor: pointer;
-    color: var(--ink-soft);
   }
-  .capture-zone strong { display: block; color: var(--ink); font-size: 15px; margin-bottom: 4px; }
+  .capture-zone strong { display: block; color: var(--on-accent); font-size: 15px; margin-bottom: 4px; }
+  .capture-zone { text-shadow: 0 1px 1px rgba(255,255,255,.18); }
+  .capture-zone:active { filter: brightness(0.92); }
   #preview-img { width: 100%; border-radius: var(--radius); margin-bottom: 10px; display: none; max-height: 280px; object-fit: cover; }
 
   table { width: 100%; border-collapse: collapse; font-size: 12px; }
   th { text-align: left; color: var(--ink-soft); font-weight: 600; font-size: 10px; text-transform: uppercase; padding: 6px 4px; border-bottom: 1px solid var(--line); }
   td { padding: 6px 4px; border-bottom: 1px dashed var(--line); vertical-align: top; }
   td input { padding: 4px 6px; font-size: 12px; }
-  .price-cell { color: var(--stamp); font-weight: 600; white-space: nowrap; }
+  .price-cell { color: var(--green); font-weight: 600; white-space: nowrap; }
   .muted { color: var(--ink-soft); font-size: 11px; }
 
   .receipt-item {
@@ -142,7 +221,8 @@
     display: flex;
     background: var(--paper);
     border-top: 1.5px dashed var(--line);
-    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+    padding: 8px 10px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
     z-index: 5;
   }
   nav.tabs button {
@@ -166,15 +246,20 @@
   #settings-panel.show { display: block; }
 </style>
 </head>
-<body>
 
+<body>
 <header class="top">
-  <h1>Receipt Ledger <span class="tick">·</span></h1>
-  <p>scan &rarr; structure &rarr; compare prices across stores</p>
+  <div class="brand">
+    <h1>Receipt Ledger <span class="tick">·</span></h1>
+    <p>scan &rarr; structure &rarr; compare prices across stores</p>
+  </div>
+  <button id="theme-toggle" class="theme-switch" type="button" role="switch"
+          aria-checked="false" aria-label="Toggle light / dark mode" title="Toggle light / dark mode">
+    <span class="knob"></span>
+  </button>
 </header>
 
 <main>
-
   <!-- SCAN VIEW -->
   <section class="view active" id="view-scan">
     <div class="card">
@@ -247,16 +332,10 @@
 <div class="toast" id="toast"></div>
 
 <script>
-/* ---------------------------------------------------------------------
- * Receipt Ledger — local-first PWA
- * All parsed receipts live in localStorage under "receipts". The
- * FastAPI backend is stateless: it only ever does image -> structured
- * JSON, so this file is the entire "database" and UI.
- * ------------------------------------------------------------------ */
-
 const STORAGE_KEY = "receipts_v1";
 const BACKEND_KEY = "backend_url_v1";
 const SECRET_KEY = "app_secret_v1";
+const THEME_KEY = "theme_v1";
 // This secret is stored only in this browser's localStorage — it is never
 // present in the source file itself, so it isn't in the git repo/deploy
 // bundle. Anyone who deploys their own copy of this frontend still has to
@@ -286,6 +365,38 @@ function getAppSecret() {
 function setAppSecret(secret) {
   localStorage.setItem(SECRET_KEY, secret.trim());
 }
+
+// ---- theme (light/dark) --------------------------------------------------
+// The <head> script above already set data-theme before first paint; this
+// section owns the toggle and keeps the theme-color meta in sync. 
+// There is a single source of truth for the meta theme-color instead of
+// duplicating the hex values in JS.
+function getTheme() {
+  return localStorage.getItem(THEME_KEY) || "";
+}
+function currentTheme() {
+  // Reflects what was actually applied (handles the OS-fallback on first run).
+  return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+}
+function getThemeColor() {
+  // Read the live surface from the CSS token, so palette edits stay in one place.
+  return getComputedStyle(document.documentElement).getPropertyValue("--paper").trim();
+}
+function applyTheme(theme) {
+  const dark = theme === "dark";
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  $("#meta-theme-color").setAttribute("content", getThemeColor());
+  $("#theme-toggle").setAttribute("aria-checked", dark ? "true" : "false");
+}
+function setTheme(theme) {
+  localStorage.setItem(THEME_KEY, theme);
+  applyTheme(theme);
+}
+$("#theme-toggle").addEventListener("click", () => {
+  setTheme(currentTheme() === "dark" ? "light" : "dark");
+});
+// Sync the toggle/aria/meta with the theme the head script already applied.
+applyTheme(currentTheme());
 
 // ---- toast --------------------------------------------------------------
 let toastTimer;
