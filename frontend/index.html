@@ -4,6 +4,18 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" id="meta-theme-color" content="#F6F7F8" />
+<script>
+  // Apply theme before first paint to avoid a light-flash for dark-mode users.
+  (function () {
+    const key = "theme_v1";
+    const dark =
+      localStorage.getItem(key) === "dark" ||
+      (localStorage.getItem(key) !== "light" &&
+        window.matchMedia &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
 <title>Receipt Ledger</title>
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icon.png" />
@@ -30,6 +42,7 @@
   }
   /* Dark mode — neutral near-black, accent stays brand green. */
   html[data-theme="dark"] {
+    color-scheme: dark;
     --paper: #121518;
     --paper-dark: #1C2024;
     --ink: #E6E8EB;
@@ -150,7 +163,7 @@
     cursor: pointer;
     font-weight: 600;
   }
-  .btn-primary { background: var(--green); color: var(--on-accent); width: 100%; text-shadow: 0 1px 1px rgba(255,255,255,.18); }
+  .btn-primary { background: var(--accent); color: var(--on-accent); width: 100%; text-shadow: 0 1px 1px rgba(255,255,255,.18); }
   .btn-primary:disabled { opacity: 0.5; }
   .btn-primary:hover:not(:disabled) { filter: brightness(1.05); }
   .btn-primary:active:not(:disabled) { filter: brightness(0.92); }
@@ -233,8 +246,8 @@
   #settings-panel.show { display: block; }
 </style>
 </head>
-<body>
 
+<body>
 <header class="top">
   <div class="brand">
     <h1>Receipt Ledger <span class="tick">·</span></h1>
@@ -247,7 +260,6 @@
 </header>
 
 <main>
-
   <!-- SCAN VIEW -->
   <section class="view active" id="view-scan">
     <div class="card">
@@ -320,13 +332,6 @@
 <div class="toast" id="toast"></div>
 
 <script>
-/* ---------------------------------------------------------------------
- * Receipt Ledger — local-first PWA
- * All parsed receipts live in localStorage under "receipts". The
- * FastAPI backend is stateless: it only ever does image -> structured
- * JSON, so this file is the entire "database" and UI.
- * ------------------------------------------------------------------ */
-
 const STORAGE_KEY = "receipts_v1";
 const BACKEND_KEY = "backend_url_v1";
 const SECRET_KEY = "app_secret_v1";
@@ -362,34 +367,36 @@ function setAppSecret(secret) {
 }
 
 // ---- theme (light/dark) --------------------------------------------------
-const THEME_LIGHT = "#F6F7F8";
-const THEME_DARK = "#121518";
+// The <head> script above already set data-theme before first paint; this
+// section owns the toggle and keeps the theme-color meta in sync. 
+// There is a single source of truth for the meta theme-color instead of
+// duplicating the hex values in JS.
 function getTheme() {
   return localStorage.getItem(THEME_KEY) || "";
+}
+function currentTheme() {
+  // Reflects what was actually applied (handles the OS-fallback on first run).
+  return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+}
+function getThemeColor() {
+  // Read the live surface from the CSS token, so palette edits stay in one place.
+  return getComputedStyle(document.documentElement).getPropertyValue("--paper").trim();
+}
+function applyTheme(theme) {
+  const dark = theme === "dark";
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  $("#meta-theme-color").setAttribute("content", getThemeColor());
+  $("#theme-toggle").setAttribute("aria-checked", dark ? "true" : "false");
 }
 function setTheme(theme) {
   localStorage.setItem(THEME_KEY, theme);
   applyTheme(theme);
 }
-function applyTheme(theme) {
-  const dark = theme === "dark";
-  document.documentElement.dataset.theme = dark ? "dark" : "light";
-  $("#theme-toggle").setAttribute("aria-checked", dark ? "true" : "false");
-  const meta = $("#meta-theme-color");
-  if (meta) meta.setAttribute("content", dark ? THEME_DARK : THEME_LIGHT);
-}
 $("#theme-toggle").addEventListener("click", () => {
-  setTheme(getTheme() === "dark" ? "light" : "dark");
+  setTheme(currentTheme() === "dark" ? "light" : "dark");
 });
-// Default: honour the saved choice, else fall back to the OS preference.
-const savedTheme = getTheme();
-applyTheme(
-  savedTheme ||
-    (window.matchMedia &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light")
-);
+// Sync the toggle/aria/meta with the theme the head script already applied.
+applyTheme(currentTheme());
 
 // ---- toast --------------------------------------------------------------
 let toastTimer;
