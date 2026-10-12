@@ -12,4 +12,16 @@ A static, build-free Progressive Web App (PWA) for photographing, editing, and c
    ```
 2. Open on mobile devices and tap **"Add to Home Screen"** to install as a standalone PWA.
 
+## Testing
+
+Frontend tests use Node's built-in test runner (zero external dependencies required):
+
+```bash
+node frontend/tests/test_collapsible_receipts.js
+# or
+node --test frontend/tests/test_collapsible_receipts.js
+```
+
+These tests automatically run in CI on pull requests, pushes, and release tags affecting the frontend.
+
 For complete data model definitions, supported JSON import/export formats, and offline service worker caching details, see [**`docs/frontend.md`**](../docs/frontend.md).

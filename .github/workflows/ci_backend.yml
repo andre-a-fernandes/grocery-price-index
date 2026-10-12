@@ -9,6 +9,11 @@ on:
     paths:
       - "backend/**"
       - ".github/workflows/ci_backend.yml"
+  push:
+    branches: ["dev", "main"]
+    paths:
+      - "backend/**"
+      - ".github/workflows/ci_backend.yml"
 
 # Cancel superseded runs on new pushes to the same PR/branch.
 concurrency:

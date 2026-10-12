@@ -216,6 +216,45 @@
   .receipt-item .name { font-weight: 600; font-size: 13px; }
   .receipt-item .sub { color: var(--ink-soft); font-size: 11px; }
 
+  .receipt-card {
+    cursor: pointer;
+    transition: background-color .15s ease, border-color .15s ease;
+  }
+  .receipt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    user-select: none;
+  }
+  .receipt-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .receipt-toggle-btn {
+    background: transparent;
+    border: none;
+    color: var(--ink-soft);
+    font-size: 11px;
+    padding: 2px 4px;
+    cursor: pointer;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+  }
+  .receipt-toggle-btn:hover {
+    color: var(--ink);
+  }
+  .receipt-card.minimized .receipt-details {
+    display: none;
+  }
+  .receipt-details {
+    margin-top: 8px;
+  }
+
   nav.tabs {
     position: fixed; bottom: 0; left: 0; right: 0;
     display: flex;
@@ -596,30 +635,43 @@ function renderHistory() {
     return;
   }
   list.innerHTML = "";
-  all.forEach((r) => {
+  all.forEach((r, idx) => {
     const currency = r.currency || "EUR";
     const total = r.items.reduce((s, i) => s + (i.total_price || 0), 0);
     const card = document.createElement("div");
-    card.className = "card";
+    card.className = "card receipt-card";
 
     const header = document.createElement("div");
-    header.style.cssText = "display:flex; justify-content:space-between; align-items:baseline;";
+    header.className = "receipt-header";
     const store = document.createElement("strong");
     store.className = "display";
     store.textContent = r.store_name;
+
+    const metaRight = document.createElement("div");
+    metaRight.className = "receipt-header-right";
+
     const dateSpan = document.createElement("span");
     dateSpan.className = "muted";
     dateSpan.textContent = r.receipt_date;
+
+    const toggleBtn = document.createElement("button");
+    toggleBtn.type = "button";
+    toggleBtn.className = "receipt-toggle-btn";
+
+    metaRight.appendChild(dateSpan);
+    metaRight.appendChild(toggleBtn);
+
     header.appendChild(store);
-    header.appendChild(dateSpan);
+    header.appendChild(metaRight);
+
+    const details = document.createElement("div");
+    details.className = "receipt-details";
 
     const summary = document.createElement("div");
     summary.className = "muted";
     summary.style.marginBottom = "8px";
     summary.textContent = `${r.items.length} items \u00b7 ${currency}${total.toFixed(2)}`;
-
-    card.appendChild(header);
-    card.appendChild(summary);
+    details.appendChild(summary);
 
     r.items.forEach((i) => {
       const row = document.createElement("div");
@@ -639,15 +691,43 @@ function renderHistory() {
       price.textContent = `${currency}${(i.total_price || 0).toFixed(2)}`;
       row.appendChild(left);
       row.appendChild(price);
-      card.appendChild(row);
+      details.appendChild(row);
     });
 
     const delBtn = document.createElement("button");
     delBtn.className = "btn-danger";
     delBtn.style.cssText = "margin-top:10px; width:100%;";
     delBtn.textContent = "Delete receipt";
-    delBtn.addEventListener("click", () => deleteReceipt(r.id));
-    card.appendChild(delBtn);
+    delBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteReceipt(r.id);
+    });
+    details.appendChild(delBtn);
+
+    card.appendChild(header);
+    card.appendChild(details);
+
+    // Default loading: only the latest receipt (idx === 0) is maximized
+    const isMinimized = idx > 0;
+    if (isMinimized) {
+      card.classList.add("minimized");
+      toggleBtn.textContent = "▼";
+      toggleBtn.setAttribute("aria-label", "Maximize receipt");
+      toggleBtn.setAttribute("aria-expanded", "false");
+    } else {
+      toggleBtn.textContent = "▲";
+      toggleBtn.setAttribute("aria-label", "Minimize receipt");
+      toggleBtn.setAttribute("aria-expanded", "true");
+    }
+
+    card.addEventListener("click", (e) => {
+      if (e.target.closest(".btn-danger")) return;
+      if (window.getSelection && window.getSelection().toString().trim().length > 0) return;
+      const currentlyMinimized = card.classList.toggle("minimized");
+      toggleBtn.textContent = currentlyMinimized ? "▼" : "▲";
+      toggleBtn.setAttribute("aria-label", currentlyMinimized ? "Maximize receipt" : "Minimize receipt");
+      toggleBtn.setAttribute("aria-expanded", String(!currentlyMinimized));
+    });
 
     list.appendChild(card);
   });
