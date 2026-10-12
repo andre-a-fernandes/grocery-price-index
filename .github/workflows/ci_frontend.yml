@@ -1,0 +1,51 @@
+name: Frontend CI
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    branches: ["dev", "main"]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/ci_frontend.yml"
+  push:
+    branches: ["dev", "main"]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/ci_frontend.yml"
+    tags:
+      - "v*"
+
+# Cancel superseded runs on new pushes to the same PR/branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.1.0
+        with:
+          node-version: "20"
+
+      - name: Run frontend tests
+        run: node --test frontend/tests/test_collapsible_receipts.js
+
+      - name: Summarize test failure
+        if: failure()
+        run: |
+          echo "### ❌ Frontend tests failed" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          node --test frontend/tests/test_collapsible_receipts.js >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Summarize test success
+        if: success()
+        run: echo "### ✅ Frontend tests passed" >> "$GITHUB_STEP_SUMMARY"
